@@ -24,34 +24,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  generate_matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Set matrix
-        id: set-matrix
-        env:
-          PLATFORMS: "${{ env.platforms }}"
-        run: |
-          # turn the comma separated string into a list
-          platforms=()
-          IFS=',' read -r -a platforms <<< "${PLATFORMS}"
-
-          MATRIX="{\"include\":[]}"
-          for platform in "${platforms[@]}"; do
-            MATRIX="$(echo "${MATRIX}" | jq ".include += [{\"platform\": \"${platform}\"}]")"
-          done
-          echo "matrix=$(echo "${MATRIX}" | jq -c '.')" >> $GITHUB_OUTPUT
-
   build_push:
     name: Build and push image
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
-    needs: generate_matrix
     strategy:
       fail-fast: false
-      matrix: ${{fromJson(needs.generate_matrix.outputs.matrix)}}
     permissions:
       contents: read
       packages: write
