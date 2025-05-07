@@ -7,7 +7,8 @@ on:
         description: "The platforms to build the image for"
         required: false
         type: string
-        default: "amd64,arm64"
+        # default: "amd64,arm64"
+        default: "arm64"
   pull_request:
     branches:
       - main
