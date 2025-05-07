@@ -1,14 +1,6 @@
 ---
 name: Build Custom Image
 on:
-  workflow_dispatch:
-    inputs:
-      platforms:
-        description: "The platforms to build the image for"
-        required: true
-        type: string
-        # default: "amd64,arm64"
-        default: "arm64"
   pull_request:
     branches:
       - main
@@ -25,7 +17,7 @@ env:
   IMAGE_DESC: "Sway Atomic for RaspberryPi"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
   ARTIFACTHUB_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"  # You should put your own image here so that you get a fancy profile image on https://artifacthub.io/!
-  PLATFORMS: ${{ inputs.platforms }}
+  PLATFORMS: "arm64"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
@@ -40,7 +32,7 @@ jobs:
       - name: Set matrix
         id: set-matrix
         env:
-          PLATFORMS: "${{ inputs.platforms }}"
+          PLATFORMS: "${{ env.platforms }}"
         run: |
           # turn the comma separated string into a list
           platforms=()
@@ -54,7 +46,7 @@ jobs:
 
   build_push:
     name: Build and push image
-    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     needs: generate_matrix
     strategy:
@@ -67,7 +59,6 @@ jobs:
 
     steps:
       - name: Install dependencies
-        if: matrix.platform == 'arm64'
         run: |
           sudo apt update -y
           sudo apt install -y \
@@ -193,7 +184,6 @@ jobs:
         env:
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ github.token }}
-          PLATFORM: ${{ inputs.platform }}
         with:
           registry: ${{ steps.registry_case.outputs.lowercase }}
           image: ${{ steps.image_case.outputs.lowercase }}
