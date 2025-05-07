@@ -5,7 +5,7 @@ on:
     inputs:
       platforms:
         description: "The platforms to build the image for"
-        required: false
+        required: true
         type: string
         # default: "amd64,arm64"
         default: "arm64"
