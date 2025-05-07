@@ -1,6 +1,14 @@
 ---
 name: Build Custom Image
 on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        required: true
+        type: choice
+        options:
+          - amd64
+          - arm64
   pull_request:
     branches:
       - main
@@ -11,7 +19,6 @@ on:
       - main
     paths-ignore:
       - '**/README.md'
-  workflow_dispatch:
 
 env:
   IMAGE_NAME: "${{ github.event.repository.name }}"  # the name of the image produced by this build, matches repo names
@@ -26,7 +33,7 @@ concurrency:
 jobs:
   build_push:
     name: Build and push image
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
 
     permissions:
       contents: read
