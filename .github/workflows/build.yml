@@ -3,12 +3,11 @@ name: Build Custom Image
 on:
   workflow_dispatch:
     inputs:
-      platform:
-        required: true
-        type: choice
-        options:
-          - amd64
-          - arm64
+      platforms:
+        description: "The platforms to build the image for"
+        required: false
+        type: string
+        default: "amd64,arm64"
   pull_request:
     branches:
       - main
@@ -22,25 +21,57 @@ on:
 
 env:
   IMAGE_NAME: "${{ github.event.repository.name }}"  # the name of the image produced by this build, matches repo names
-  IMAGE_DESC: "My Customized Universal Blue Image"
+  IMAGE_DESC: "Sway Atomic for RaspberryPi"
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
   ARTIFACTHUB_LOGO_URL: "https://avatars.githubusercontent.com/u/120078124?s=200&v=4"  # You should put your own image here so that you get a fancy profile image on https://artifacthub.io/!
+  PLATFORMS: ${{ inputs.platforms }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
   cancel-in-progress: true
 
 jobs:
+  generate_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        env:
+          PLATFORMS: "${{ inputs.platforms }}"
+        run: |
+          # turn the comma separated string into a list
+          platforms=()
+          IFS=',' read -r -a platforms <<< "${PLATFORMS}"
+
+          MATRIX="{\"include\":[]}"
+          for platform in "${platforms[@]}"; do
+            MATRIX="$(echo "${MATRIX}" | jq ".include += [{\"platform\": \"${platform}\"}]")"
+          done
+          echo "matrix=$(echo "${MATRIX}" | jq -c '.')" >> $GITHUB_OUTPUT
+
   build_push:
     name: Build and push image
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
-
+    runs-on: ${{ matrix.platform == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    timeout-minutes: 60
+    needs: generate_matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.generate_matrix.outputs.matrix)}}
     permissions:
       contents: read
       packages: write
       id-token: write
 
     steps:
+      - name: Install dependencies
+        if: matrix.platform == 'arm64'
+        run: |
+          sudo apt update -y
+          sudo apt install -y \
+            podman
+
       # These stage versions are pinned by https://github.com/renovatebot/renovate
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
